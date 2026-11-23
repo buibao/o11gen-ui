@@ -1,0 +1,178 @@
+[
+  {
+    "component": "Button",
+    "aliases": [
+      "button"
+    ],
+    "target": "Button",
+    "dependencies": [],
+    "properties": {
+      "label": "caption",
+      "state": "Enabled / IsLoading when supported"
+    },
+    "tokens": {
+      "fill": "project button class"
+    },
+    "limitations": "Verify click behavior and button states.",
+    "fallback": "Existing project button block"
+  },
+  {
+    "component": "Text field",
+    "aliases": [
+      "text field",
+      "textfield",
+      "input"
+    ],
+    "target": "Input + Label",
+    "dependencies": [],
+    "properties": {
+      "label": "Label",
+      "value": "typed variable"
+    },
+    "tokens": {
+      "border": "existing input style"
+    },
+    "limitations": "Bind a variable of the requested type.",
+    "fallback": "Project form block"
+  },
+  {
+    "component": "Card",
+    "aliases": [
+      "card"
+    ],
+    "target": "Container",
+    "dependencies": [],
+    "properties": {
+      "children": "content"
+    },
+    "tokens": {
+      "padding": "spacing class"
+    },
+    "limitations": "Complex or repeated cards may require a block.",
+    "fallback": "Referenced Content/Card or project card block"
+  },
+  {
+    "component": "Modal",
+    "aliases": [
+      "modal",
+      "popup"
+    ],
+    "target": "Popup",
+    "dependencies": [],
+    "properties": {
+      "open": "visible expression",
+      "children": "content"
+    },
+    "tokens": {
+      "overlay": "project popup class"
+    },
+    "limitations": "Verify module style and supported focus behavior.",
+    "fallback": "Available OSUI modal pattern"
+  },
+  {
+    "component": "Grid",
+    "aliases": [
+      "grid",
+      "columns"
+    ],
+    "target": "Container",
+    "dependencies": [],
+    "properties": {
+      "columns": "responsive layout"
+    },
+    "tokens": {
+      "gap": "spacing token"
+    },
+    "limitations": "Verify stacking from supplied variants.",
+    "fallback": "Scoped responsive CSS"
+  },
+  {
+    "component": "Typography",
+    "aliases": [
+      "text",
+      "heading"
+    ],
+    "target": "Text / Expression",
+    "dependencies": [],
+    "properties": {
+      "characters": "text or expression"
+    },
+    "tokens": {
+      "style": "theme typography class"
+    },
+    "limitations": "Check available fonts and weights.",
+    "fallback": "Scoped typography class"
+  },
+  {
+    "component": "Icon",
+    "aliases": [
+      "icon"
+    ],
+    "target": "Icon",
+    "dependencies": [],
+    "properties": {
+      "name": "installed icon"
+    },
+    "tokens": {
+      "fill": "theme color"
+    },
+    "limitations": "Verify the glyph and library in this module.",
+    "fallback": "Imported design asset"
+  },
+  {
+    "component": "Status tag",
+    "aliases": [
+      "status tag",
+      "tag"
+    ],
+    "target": "Content/Tag",
+    "dependencies": [
+      "OutSystemsUI.Content.Tag"
+    ],
+    "properties": {
+      "label": "Tag placeholder"
+    },
+    "tokens": {
+      "fill": "Color parameter"
+    },
+    "limitations": "Verify placeholder and color type in installed version.",
+    "fallback": "Existing status Web Block"
+  },
+  {
+    "component": "Image",
+    "aliases": [
+      "image",
+      "illustration"
+    ],
+    "target": "Image",
+    "dependencies": [],
+    "properties": {
+      "asset": "resource"
+    },
+    "tokens": {
+      "sizing": "project image class"
+    },
+    "limitations": "Verify export rights and intrinsic size.",
+    "fallback": "Approved image resource"
+  },
+  {
+    "component": "Layout",
+    "aliases": [
+      "frame",
+      "group",
+      "container"
+    ],
+    "target": "Container",
+    "dependencies": [],
+    "properties": {
+      "direction": "layout",
+      "children": "ordered children"
+    },
+    "tokens": {
+      "padding": "theme spacing",
+      "gap": "theme spacing"
+    },
+    "limitations": "Inspect semantics before creating nested containers.",
+    "fallback": "Existing layout block"
+  }
+]

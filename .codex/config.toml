@@ -1,0 +1,13 @@
+# Project-local integrations. Start Codex from the trusted repository root.
+[features]
+hooks = true
+
+[mcp_servers.servicestudio]
+url = "http://127.0.0.1:41820/mcp"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+
+[mcp_servers.playwright]
+command = "node"
+args = ["node_modules/@playwright/mcp/cli.js", "--isolated", "--headless", "--browser", "msedge"]

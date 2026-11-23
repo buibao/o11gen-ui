@@ -7,6 +7,12 @@ skill already ships in — so it ports verbatim, with no adapter markdown
 needed. As always, it's the **same** Service Studio MCP server, so tool names
 and the lambda contract are identical.
 
+For this checkout's complete Figma-to-O11 workflow, use the
+[Codex execution setup](figma-to-o11.md#codex-setup). It already includes a
+project entry skill, three MCP registrations and trusted project hooks. The
+manual copying below is for the standalone upstream OML skill; it is not
+required for this repository's workflow.
+
 ## Two ways to give Codex the skill
 
 | Mechanism | Scope | Source in this package | Best for |

@@ -1,0 +1,50 @@
+{
+  "figma": {
+    "frameUrl": "https://www.figma.com/design/ExampleKey/Example?node-id=1-2",
+    "accessMode": "mcp",
+    "referenceExportScale": 1
+  },
+  "outsystems": {
+    "mcpEndpoint": "http://127.0.0.1:41820/mcp",
+    "testModule": "ExampleUITest",
+    "moduleKey": "replace-with-the-Test-Module-key",
+    "testScreen": "DesignReview",
+    "testAppUrl": "https://test.example.invalid/ExampleUITest/DesignReview"
+  },
+  "playwright": {
+    "browser": "chromium",
+    "headless": true,
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 1280,
+        "height": 800
+      },
+      {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      }
+    ]
+  },
+  "validation": {
+    "enabled": true,
+    "repair": true,
+    "enableResponsiveTests": true,
+    "enableFunctionalTests": false,
+    "maxDifferentFraction": 0.01,
+    "pixelTolerance": 0.08,
+    "geometryTolerancePx": 2,
+    "maxRepairAttempts": 3
+  },
+  "execution": {
+    "allowTestModuleMerge": false,
+    "allowTestModulePublish": false,
+    "requireManualApproval": true
+  }
+}

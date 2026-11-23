@@ -1,0 +1,22 @@
+{
+  "description": "Figma-to-O11 workflow checks for Codex sessions bound by the harness begin command.",
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{
+        "type": "command",
+        "command": "node -e \"import(require('node:url').pathToFileURL(require('node:child_process').execFileSync('git',['rev-parse','--show-toplevel'],{encoding:'utf8'}).trim()+'/harness/codex-hook.mjs').href)\"",
+        "timeout": 15,
+        "additionalContextLimit": 1000
+      }]
+    }],
+    "PreToolUse": [{
+      "matcher": "^mcp__servicestudio__(applyModelApiCode|startOmlEditSession|endOmlEditSession|oml.*|openModule|closeModule)$",
+      "hooks": [{
+        "type": "command",
+        "command": "node -e \"import(require('node:url').pathToFileURL(require('node:child_process').execFileSync('git',['rev-parse','--show-toplevel'],{encoding:'utf8'}).trim()+'/harness/codex-hook.mjs').href)\"",
+        "timeout": 15,
+        "statusMessage": "Checking Figma-to-O11 target and phase"
+      }]
+    }]
+  }
+}

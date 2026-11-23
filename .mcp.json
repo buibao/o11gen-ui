@@ -2,7 +2,16 @@
   "mcpServers": {
     "servicestudio": {
       "type": "http",
-      "url": "http://127.0.0.1:41820/mcp"
+      "url": "${O11_MCP_ENDPOINT:-http://127.0.0.1:41820/mcp}"
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["node_modules/@playwright/mcp/cli.js", "--isolated", "--headless", "--browser", "msedge"]
     }
   }
 }

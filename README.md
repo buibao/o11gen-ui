@@ -1,5 +1,9 @@
 # OutSystems 11 MCP
 
+Personal repository: [`buibao/o11gen-ui`](https://github.com/buibao/o11gen-ui). See [how to sync updates from OutSystems](setup-docs/personal-repo-sync.md).
+
+For the Codex or Claude Code workflow that generates a selected Figma frame in an O11 Test Module and validates the published screen, see [Figma-to-O11 setup and first run](setup-docs/figma-to-o11.md).
+
 **Maintain and evolve your OutSystems 11 estate with any coding agent — governed by the O11 lifecycle.**
 
 OutSystems 11 is the stable, trusted foundation your core operations run on. The OutSystems 11 MCP lets you modernize it with confidence: external coding agents read and evolve your O11 applications through a local MCP server embedded in Service Studio — so you get AI speed without the cost, disruption, or risk of a replatform.

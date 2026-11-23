@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-This repository distributes a single skill, `servicestudio-mcp-oml/`, for the OutSystems 11 MCP, packaged for Claude Code (the optimized path) plus GitHub Copilot, Antigravity, Kiro, Codex CLI and Cursor. The skill teaches an agent to read and mutate an OutSystems 11 module open in Service Studio via the embedded MCP server's `applyModelApiCode` tool. **This repo is skill content (Markdown, C# example lambdas, generated reference files) — there is no build system, no runtime, and no executable entry point.**
+The upstream `servicestudio-mcp-oml/` skill documents Service Studio's embedded O11 MCP server. This checkout also includes a local TypeScript validation harness and project Claude skills. For one Figma frame, invoke `/figma-to-o11 harness.local.json`. It routes design inspection, native generation in the authorized Test Module, publication, browser validation and bounded repairs. Follow [the execution guide](setup-docs/figma-to-o11.md) and the official skill for live operations.
 
-Note the distinction: working **on** this repo means editing the skill content. Using the skill (driving a live OutSystems module) is what the content teaches an *end user's* agent to do — that is not this task.
+For repository development, edit the requested skill content or local harness and run its fixture checks with `npm test`. Live module operations belong to explicitly authorized execution sessions.
 
 > If you are in fact here to drive a live OutSystems 11 module rather than change this repo, stop and read [AGENTS.md](./AGENTS.md) and `servicestudio-mcp-oml/SKILL.md` instead. AGENTS.md is written for that job and is loaded automatically alongside this file, so take care not to act on its contract while editing repo content.
 

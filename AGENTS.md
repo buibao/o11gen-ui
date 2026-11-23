@@ -1,5 +1,11 @@
 # OutSystems 11 OML editing via the Service Studio MCP server
 
+For a Figma-to-O11 task in Codex, first read
+[`.agents/skills/figma-to-o11/SKILL.md`](.agents/skills/figma-to-o11/SKILL.md).
+It routes the repository's design, mapping, release and browser workflow and
+requires the trusted project Codex hooks before workflow writes. The OML
+contract below remains authoritative for live Service Studio calls.
+
 > **Which task are you doing?** This repository serves two different jobs, and
 > they need opposite instructions:
 >

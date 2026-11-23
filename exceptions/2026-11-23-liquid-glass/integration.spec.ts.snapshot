@@ -1,0 +1,52 @@
+// Historical snapshot from tests/integration/harness.spec.ts; not an active test.
+test('explicit per-call checker requires approval, matches the native session and checks the exact packet', async () => {
+  const c = config();
+  c.outsystems.testAppUrl = url;
+  c.execution.guardMode = 'explicit-call';
+  const run = begin(c, 'fixture'), dir = runPath(run), session = crypto.randomUUID();
+  const file = join(dir, 'fixture-config.json'), requestFile = join(dir, 'request.json');
+  json(file, c);
+  json(bindingPath(session, 'codex'), { file, run });
+  json(join(dir, 'inventory.json'), inventory(c));
+  importDesign(c, c.playwright.viewports[0], join(dir, 'design', 'desktop'), design(), reference(), null);
+  const e = { ...evidence(c), merge: undefined, publish: undefined, sessionOwned: false,
+    explicitCallGuardAuthorized: false };
+  json(join(dir, 'attempt-0', 'evidence.json'), e);
+  const request = (tool: string, input: unknown) => ({
+    tool_name: 'mcp__servicestudio__' + tool, tool_input: { input },
+  });
+  async function check(packet: unknown, sid: string = session) {
+    json(requestFile, packet);
+    const r = await promisify(execFile)(process.execPath,
+      ['--import', 'tsx', 'harness/cli.ts', 'check-call', file, run, requestFile],
+      { env: { ...process.env, CODEX_THREAD_ID: session, CODEX_SESSION_ID: sid } });
+    return JSON.parse(r.stdout);
+  }
+  const args = { eSpaceName: e.identity.address };
+  await expect(check(request('startOmlEditSession', args))).rejects.toThrow();
+  e.explicitCallGuardAuthorized = true;
+  json(join(dir, 'attempt-0', 'evidence.json'), e);
+  const packet = request('startOmlEditSession', args);
+  const receipt = await check(packet);
+  expect(receipt.status).toBe('PASS');
+  expect(receipt.requestHash).toBe(hash(JSON.stringify(packet)));
+  expect(receipt.session).toBe(session);
+  await expect(check(packet, 'different-session')).rejects.toThrow();
+  await expect(check(request('startOmlEditSession', { eSpaceName: 'Other' }))).rejects.toThrow();
+  await expect(check({ ...packet, sessionToken: 'never-store-credentials' })).rejects.toThrow();
+  const apply = { ...args, code: 'eSpace => {}', imports: [] };
+  await expect(check(request('applyModelApiCode', apply))).rejects.toThrow();
+  e.sessionOwned = true;
+  json(join(dir, 'attempt-0', 'evidence.json'), e);
+  expect((await check(request('applyModelApiCode', apply))).status).toBe('PASS');
+  await expect(check(request('applyModelApiCode', { ...apply, code: apply.code + '\n' }))).rejects.toThrow();
+  await expect(check(request('omlMerge', { ...args, mutatedOmlPath: 'unverified.oml' }))).rejects.toThrow();
+  await expect(check(request('omlPublish', args))).rejects.toThrow();
+  await expect(check(request('omlReset', args))).rejects.toThrow();
+  json(join(dir, 'attempt-0', 'evidence.json'), { ...e, merge: { merged: true } });
+  expect((await check(request('endOmlEditSession', args))).status).toBe('PASS');
+  json(join(dir, 'attempt-0', 'evidence.json'), { ...e, merge: { merged: true }, sessionOwned: false });
+  await expect(check(request('endOmlEditSession', args))).rejects.toThrow();
+  json(bindingPath(session, 'codex'), { file, run: 'different-run' });
+  await expect(check(packet)).rejects.toThrow();
+});

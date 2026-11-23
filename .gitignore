@@ -437,3 +437,13 @@ FodyWeavers.xsd
 
 # koda run-eval results (/koda:run-eval)
 test_outputs/
+
+# Local Figma-to-O11 inputs, evidence, browser sessions and caches
+/harness.local.json
+/.harness-cache/
+/reports/
+/test-results/
+/playwright-report/
+/.playwright-mcp/
+/.env
+/.env.*

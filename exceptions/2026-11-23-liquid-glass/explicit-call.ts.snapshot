@@ -1,0 +1,36 @@
+// Historical snapshot of harness/explicit-call.ts. Not an active source file.
+import { resolve } from 'node:path';
+import { z } from 'zod';
+import { readConfig, readJson, str } from './config.ts';
+import { bindingPath, guard } from './guard.ts';
+import { paths } from './run.ts';
+import { hash } from './io.ts';
+
+// This is an opt-in per-call check, not an automatic hook or an MCP transport.
+// It never invokes Service Studio and never reads or persists a session token.
+export function checkExplicitCall(file: string, run: string, raw: unknown) {
+  const c = readConfig(file);
+  if (c.execution.guardMode !== 'explicit-call') throw Error('Explicit mode is not selected');
+  const session = str.parse(process.env.CODEX_THREAD_ID);
+  if (session !== process.env.CODEX_SESSION_ID) throw Error('Native session identity mismatch');
+  const binding = z.object({ file: str, run: str })
+    .parse(readJson(bindingPath(session, 'codex')));
+  if (binding.run !== run || resolve(binding.file) !== resolve(file))
+    throw Error('Bound run mismatch');
+  const request = z.strictObject({
+    tool_name: z.string().regex(/^mcp__servicestudio__[A-Za-z]+$/),
+    tool_input: z.strictObject({ input: z.strictObject({
+      eSpaceName: z.string().min(1),
+      code: z.string().min(1).optional(),
+      imports: z.array(z.string()).optional(),
+      mutatedOmlPath: z.string().min(1).optional(),
+    }) }),
+  }).parse(raw);
+  if (request.tool_name === 'mcp__servicestudio__applyModelApiCode' &&
+      (!request.tool_input.input.code || !request.tool_input.input.imports))
+    throw Error('Apply envelope incomplete');
+  paths(c, run); // Config identity and terminal state are rechecked by guard.
+  if (!guard({ ...request, session_id: session }, 'codex')) throw Error('Call denied');
+  return { status: 'PASS', run, session, tool: request.tool_name,
+    requestHash: hash(JSON.stringify(request)) };
+}

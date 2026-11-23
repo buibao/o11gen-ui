@@ -1,0 +1,12 @@
+// Historical snapshot from tests/unit/harness.test.ts; not an active test.
+test('explicit per-call mode needs its own authorization and retains publication checks', () => {
+  const c = config();
+  const e = evidence(c);
+  c.execution.guardMode = 'explicit-call';
+  assert.equal(gate(c, 'generate', e).status, 'NEEDS_APPROVAL');
+  const approved = { ...e, explicitCallGuardAuthorized: true };
+  assert.equal(gate(c, 'generate', approved).status, 'PASS');
+  assert.equal(gate(c, 'merge', { ...approved, mergeAuthorized: false }).status, 'NEEDS_APPROVAL');
+  assert.equal(gate(c, 'publish', { ...approved, publishAuthorized: false }).status, 'NEEDS_APPROVAL');
+  assert.equal(gate(c, 'generate', { ...approved, explicitCallGuardAuthorized: false }).status, 'NEEDS_APPROVAL');
+});
