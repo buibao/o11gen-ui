@@ -4,8 +4,15 @@ import { type Config, type Viewport } from './config.ts';
 import { freshness } from './gates.ts';
 import { check, diff, writeView, type Plan, type Check } from './visual.ts';
 import { type z } from 'zod';
+import { canonicalCss } from './theme.ts';
 
 type Marker = z.infer<typeof freshness>;
+async function inlineStyles(page: Page, rootSelector: string) {
+  const root = page.locator(rootSelector);
+  if (await root.count() !== 1) return check('css', 'style-root', 'FAIL', 'Expected one screen root');
+  const count = await root.evaluate(el => Number(el.hasAttribute('style')) + el.querySelectorAll('[style]').length);
+  return check('css', 'inline-style', count ? 'FAIL' : 'PASS', 'Inline style attributes in screen: ' + count);
+}
 function cssArea(key: string) {
   if (key.toLowerCase().includes('color') || key === 'boxShadow')
     return 'color';
@@ -39,6 +46,28 @@ async function elementChecks(page: Page, plan: Plan, c: Config) {
           'Largest box deviation ' + delta + ' CSS px',
         ),
       );
+    }
+    const model = plan.model[e.id];
+    if (model) {
+      const missing = await loc.evaluate((el, classes) => classes.filter(k => !el.classList.contains(k)), model.classes);
+      if (missing.length) checks.push(check('css', e.id, 'FAIL', 'Missing theme classes: ' + missing.join(', ')));
+      for (const b of Object.values(model.bindings)) {
+        if (!b.cssValue) continue;
+        const prop = b.field.startsWith('token:') ? b.field.slice(6) : b.cssProperty;
+        if (!prop) continue;
+        const actual = await loc.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p).trim(), prop);
+        checks.push(check('css', e.id, canonicalCss(actual) === canonicalCss(b.cssValue) ? 'PASS' : 'FAIL',
+          prop + ' expected ' + b.cssValue + ', observed ' + actual));
+      }
+      const layout = model.bindings.layoutMode?.source;
+      if (layout === 'VERTICAL' || layout === 'HORIZONTAL') {
+        const direction = await loc.evaluate(el => getComputedStyle(el).flexDirection);
+        const display = await loc.evaluate(el => getComputedStyle(el).display);
+        if (display.includes('flex') && direction !== (layout === 'VERTICAL' ? 'column' : 'row'))
+          checks.push(check('geometry', e.id, 'FAIL', 'Flex direction disagrees with Figma Auto Layout'));
+      }
+      if (model.facts.Enabled?.toLowerCase() === 'false' && !await loc.isDisabled())
+        checks.push(check('functional', e.id, 'FAIL', 'Expected disabled control'));
     }
     for (const [key, expected] of Object.entries(e.style ?? {})) {
       const actual = await loc.evaluate(
@@ -196,12 +225,13 @@ export async function capture(
     });
     if (!res?.ok() || page.url() !== c.outsystems.testAppUrl) throw Error();
     stage = 'Deployment marker or ready element unavailable';
+    const readyTimeout = c.playwright.readyTimeoutMs ?? 45000;
     await expect(page.locator(marker.selector)).toHaveAttribute(
       marker.attribute,
       marker.expected,
-      { timeout: 8000 },
+      { timeout: readyTimeout },
     );
-    await page.locator(plan.readySelector).waitFor({ state: 'visible' });
+    await page.locator(plan.readySelector).waitFor({ state: 'visible', timeout: readyTimeout });
     stage = 'Waiting for required assets';
     await page.waitForFunction(
       () =>
@@ -248,6 +278,7 @@ export async function capture(
       checks.push(...focused.map((x) => ({ ...x, area: 'repair-' + x.area })));
     }
     checks.push(...(await elementChecks(page, plan, c)));
+    checks.push(await inlineStyles(page, plan.styleRoot));
     for (const area of ['geometry', 'typography', 'color', 'assets'] as const) {
       if (!checks.some((x) => x.area === area))
         checks.push(
@@ -272,12 +303,17 @@ export async function capture(
     );
     const screenshot = await page.screenshot({
       animations: 'disabled',
-      caret: 'hide',
+      // Playwright's caret hiding leaves style="" on inputs after the capture.
+      // A transient stylesheet keeps the authored DOM available for the second inline-style check.
+      caret: 'initial',
+      style: 'input, textarea, [contenteditable] { caret-color: transparent !important; }',
       scale: 'css',
       timeout: 15000,
     });
     pixels = diff(c, v, reference, screenshot, dir, plan.masks);
     checks.push(pixels.check, await functional(page, plan, c));
+    if (c.validation.enableFunctionalTests && page.url() === c.outsystems.testAppUrl)
+      checks.push(await inlineStyles(page, plan.styleRoot));
     checks.push(
       check(
         'health',

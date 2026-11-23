@@ -8,6 +8,8 @@ const entry = z.strictObject({
   component: str,
   aliases: z.array(str).min(1),
   target: str,
+  alternatives: z.array(str).optional(),
+  members: z.array(str).min(1).optional(),
   dependencies: z.array(str),
   properties: z.record(str, str),
   tokens: z.record(str, str),
@@ -40,7 +42,7 @@ export function mappings(
             id: str,
             name: z.string(),
             type: str,
-            properties: z.object({ componentId: str.optional() }).optional(),
+            properties: z.object({ componentId: str.optional() }).catchall(z.unknown()).optional(),
           }),
         )
         .min(1),
@@ -48,13 +50,14 @@ export function mappings(
         .record(str, z.object({ name: str, componentSetId: str.optional() }))
         .default({}),
       componentSets: z.record(str, z.object({ name: str })).default({}),
+      variables: z.record(str, z.unknown()).default({}),
     })
     .parse(input);
   const catalog = registry.parse(rawRegistry);
   const actual = inventory.parse(available);
   if (actual.moduleKey !== moduleKey)
     throw Error('Wrong mapping inventory module');
-  const key = hash(JSON.stringify([manifest, catalog, actual]));
+  const key = hash(JSON.stringify([3, manifest, catalog, actual]));
   const path = join('.harness-cache', 'mapping', key + '.json');
   if (existsSync(path)) return readJson(path);
   const byAlias = new Map(
@@ -74,12 +77,15 @@ export function mappings(
         byAlias.get(component?.name.toLowerCase() ?? '') ??
         byAlias.get(n.name.toLowerCase()) ??
         byAlias.get(n.type.toLowerCase()));
-    const required = row ? [row.target, ...row.dependencies] : [];
+    const target = row && ([row.target, ...(row.alternatives ?? [])]
+      .find(candidate => actual.available.includes(candidate)) ?? row.target);
+    const required = row ? [...(row.members ?? [target!]), ...row.dependencies] : [];
     const missing = required.filter((d) => !actual.available.includes(d));
     return {
       node: n.id,
       component: row?.component ?? null,
-      target: row?.target ?? null,
+      target: target ?? null,
+      source: n.properties ?? {},
       status: row && !missing.length ? 'PASS' : 'BLOCKED',
       missing,
     };
@@ -87,6 +93,7 @@ export function mappings(
   const output = {
     status: mapped.every((m) => m.status === 'PASS') ? 'PASS' : 'BLOCKED',
     mapped,
+    variables: manifest.variables,
   };
   json(path, output);
   return output;

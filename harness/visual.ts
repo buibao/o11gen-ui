@@ -50,6 +50,22 @@ const step = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('url'), value: z.url() }),
 ]);
 export const planSchema = z.strictObject({
+  styleRoot: str,
+  model: z.record(str, z.strictObject({
+    path: str,
+    classes: z.array(str),
+    facts: z.record(str, str),
+    bindings: z.record(str, z.strictObject({
+      source: z.json(),
+      field: str,
+      mode: str.optional(),
+      cssValue: str.optional(),
+      cssProperty: str.optional(),
+      tokenSelector: str.optional(),
+      tokenContext: str.optional(),
+    })),
+    visualExemption: str.optional(),
+  })),
   readySelector: str,
   stableData: z.boolean(),
   fontsAvailable: z.boolean(),

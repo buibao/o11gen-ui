@@ -69,6 +69,7 @@ export const configSchema = z.strictObject({
   playwright: z.strictObject({
     browser: z.enum(['chromium', 'firefox', 'webkit']),
     headless: z.boolean(),
+    readyTimeoutMs: z.number().int().min(1).max(120000).optional(),
     viewports: z
       .array(viewport)
       .min(1)

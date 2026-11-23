@@ -14,17 +14,19 @@
     "test": "npm run typecheck && npm run unit && npm run browser"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.0",
     "@playwright/mcp": "0.0.86",
     "@playwright/test": "1.65.1",
-    "zod": "^4.0.0",
-    "@modelcontextprotocol/sdk": "^1.24.0",
+    "css-tree": "^3.2.1",
+    "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",
-    "pixelmatch": "^7.1.0"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@types/css-tree": "^2.3.11",
     "@types/node": "^22",
     "@types/pngjs": "^6",
-    "typescript": "~5.9.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.0"
   }
 }

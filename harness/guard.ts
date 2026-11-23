@@ -65,6 +65,8 @@ export function guard(raw: unknown, client: WorkflowClient = 'claude') {
     !!args.code &&
     /^eSpace\s*=>\s*\{/.test(args.code) &&
     args.code.endsWith('}') &&
+    !/\.CustomStyle\s*=(?!=)\s*(?!\s*(?:null|""|string\.Empty)\s*;)/.test(args.code) &&
+    !/\.Property\s*=\s*@?"style"/i.test(args.code) &&
     !/\beSpace\s*\.\s*Save\s*\(/.test(args.code)
   );
 }

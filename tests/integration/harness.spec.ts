@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, spawnSync } from 'node:child_process';
@@ -100,6 +100,55 @@ test('normal CLI runs Playwright Test, captures fresh screen and writes complete
   ])
     expect(existsSync(join(dir, 'attempt-0', 'desktop', n))).toBe(true);
 });
+
+test('generation needs a node plan and complete theme; merge and publish compare independent readbacks', () => {
+  const { c, run, dir, e } = prepared();
+  const path = join(dir, 'plans', 'desktop.json');
+  renameSync(path, path + '.original');
+  expect(checkedGate(c, run, 'generate').status).toBe('BLOCKED');
+  json(path, { ...plan, elements: [{ ...plan.elements[0], id: 'absent-from-design' }] });
+  expect(checkedGate(c, run, 'generate').reason).toContain('Unknown Figma node');
+  json(path, plan);
+  const ep = join(dir, 'attempt-0', 'evidence.json');
+  json(ep, { ...e, theme: undefined });
+  expect(checkedGate(c, run, 'generate').status).toBe('BLOCKED');
+  json(ep, e);
+  expect(checkedGate(c, run, 'generate').status).toBe('PASS');
+  const wrong = { ...e.mutation.styleReadback, sheets: { FixtureTheme:'unexpected digest' } };
+  json(ep, { ...e, mutation:{ ...e.mutation, styleReadback:wrong } });
+  expect(checkedGate(c, run, 'merge').status).toBe('BLOCKED');
+  json(ep, { ...e, merge:{ ...e.merge, styleReadback:wrong } });
+  expect(checkedGate(c, run, 'merge').status).toBe('PASS');
+  expect(checkedGate(c, run, 'publish').status).toBe('BLOCKED');
+});
+
+test('runtime rejects inline style even when the rendered pixels match', async ({ browser }) => {
+  const { c, run } = prepared();
+  const server = createServer((_req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.end(_req.url === '/editable'
+      ? fixtureHtml.replace('</body>', '<input aria-label="Test text"></body>')
+      : fixtureHtml.replace('id="button"', 'style="background:var(--brand)" id="button"'));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    if (!address || typeof address === 'string') throw Error();
+    c.outsystems.testAppUrl = 'http://127.0.0.1:' + address.port + '/screen';
+    const r = await capture(browser, c, c.playwright.viewports[0], plan, evidence(c).freshness,
+      reference(), join(runPath(run), 'inline-style'));
+    expect(r.differentPixels).toBe(0);
+    expect(r.status).toBe('FAIL');
+    expect(r.checks.some(x => x.id === 'inline-style' && x.status === 'FAIL')).toBe(true);
+    c.outsystems.testAppUrl = 'http://127.0.0.1:' + address.port + '/editable';
+    const editable = await capture(browser, c, c.playwright.viewports[0], plan, evidence(c).freshness,
+      undefined, join(runPath(run), 'editable'));
+    expect(editable.checks.filter(x => x.id === 'inline-style').map(x => x.status)).toEqual(['PASS', 'PASS']);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
 test('responsive variants run independently and incomplete MCP inspection stops validation', async ({
   browser,
 }) => {
@@ -126,7 +175,9 @@ test('responsive variants run independently and incomplete MCP inspection stops 
       reference(v.width, v.height),
       null,
     );
-    json(join(dir, 'plans', v.name + '.json'), plan);
+    json(join(dir, 'plans', v.name + '.json'), { ...plan, model: {
+      [raw.id]: plan.model['1:2'], '1:3': plan.model['1:3'],
+    } });
   }
   const evidencePath = join(dir, 'attempt-0', 'evidence.json');
   json(evidencePath, { ...ev, browserInspection: undefined });
@@ -275,6 +326,8 @@ test('Claude hook denies wrong module, missing evidence and replay; valid calls 
     ...active,
     sessionOwned: true,
   });
+  expect(invoke('applyModelApiCode', { ...args, code: 'eSpace => { w.CustomStyle = "padding:8px"; }' })).toBe(2);
+  expect(invoke('applyModelApiCode', { ...args, code: 'eSpace => { prop.Property = "STYLE"; }' })).toBe(2);
   expect(
     invoke('omlMerge', { ...args, mutatedOmlPath: 'unverified.oml' }),
   ).toBe(2);

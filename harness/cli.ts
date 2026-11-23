@@ -12,6 +12,9 @@ import { phases, repairDecision } from './gates.ts';
 import { json, result } from './io.ts';
 import { bindingPath, clients } from './guard.ts';
 import { resolveModule } from './module.ts';
+import { inspectTheme } from './theme.ts';
+import { checkDesignPlan } from './conformance.ts';
+import { planSchema } from './visual.ts';
 
 const emit = (v: unknown) => console.log(JSON.stringify(v, null, 2));
 async function main() {
@@ -170,14 +173,28 @@ async function main() {
       emit({ source: await restDesign(c, view, base) });
       break;
     case 'map': {
-      const m = mappings(
-        readJson(join(base, 'manifest.json')),
-        readJson(join(dir, 'inventory.json')),
-        c.outsystems.moduleKey,
-      ) as { status: string };
-      json(join(base, 'mapping.json'), m);
-      emit({ status: m.status, path: join(base, 'mapping.json') });
-      if (m.status !== 'PASS') process.exitCode = 2;
+      const path = join(base, 'mapping.json');
+      try {
+        const m = mappings(
+          readJson(join(base, 'manifest.json')),
+          readJson(join(dir, 'inventory.json')),
+          c.outsystems.moduleKey,
+        ) as { status: string };
+        const resolved = m.status === 'PASS' ? checkDesignPlan(
+          planSchema.parse(readJson(join(dir, 'plans', view.name + '.json'))), m,
+          inspectTheme(z.object({ theme: z.unknown() }).parse(readJson(join(attempt, 'evidence.json'))).theme,
+            c.outsystems.moduleKey),
+        ) : m;
+        json(path, resolved);
+        emit({ status: m.status, path });
+        if (m.status !== 'PASS') process.exitCode = 2;
+      } catch (error) {
+        const reason = error instanceof z.ZodError ? 'Invalid or missing mapping evidence' :
+          error instanceof Error ? error.message : 'Invalid mapping evidence';
+        json(path, result('BLOCKED', reason));
+        emit({ status: 'BLOCKED', reason, path });
+        process.exitCode = 2;
+      }
       break;
     }
     default:

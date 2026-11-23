@@ -1,6 +1,9 @@
 import { PNG } from 'pngjs';
 import { readConfig, type Config } from '../../harness/config.ts';
 import type { Plan } from '../../harness/visual.ts';
+import { hash } from '../../harness/io.ts';
+
+const themeCss = ':root{--brand:rgb(10,20,30)}.stack{display:flex;flex-direction:column}.primary{background:var(--brand)}';
 
 export function config(): Config {
   const c = readConfig('config/harness.example.json');
@@ -11,6 +14,7 @@ export function config(): Config {
   };
   c.playwright.viewports = [{ name: 'desktop', width: 120, height: 80 }];
   c.validation.enableFunctionalTests = true;
+  c.playwright.readyTimeoutMs = 2000;
   return c;
 }
 export function design(width = 120, height = 80) {
@@ -58,7 +62,16 @@ export function evidence(c: Config) {
     isSelected: true,
     moduleType: 'Reactive',
   };
+  const styleReadback = {
+    sheets: { FixtureTheme: hash(themeCss) },
+    widgets: {
+      ScreenRoot: { kind: 'Container', classes: ['stack'], facts: {}, customStyle: null, attributes: {} },
+      Primary: { kind: 'Button', classes: ['primary'], facts: {}, customStyle: null, attributes: {} },
+    },
+  };
   return {
+    theme: { moduleKey: c.outsystems.moduleKey, theme: 'FixtureTheme', complete: true,
+      sheets: { FixtureTheme: themeCss }, changes: {} },
     identity: {
       tabs: [tab],
       address,
@@ -75,6 +88,7 @@ export function evidence(c: Config) {
       ownSessionOrIdle: true,
     },
     mutation: {
+      styleReadback,
       address,
       screen,
       mutatedOmlPath: 'working.oml',
@@ -89,6 +103,7 @@ export function evidence(c: Config) {
     mergeAuthorized: true,
     mergeReviewed: true,
     merge: {
+      styleReadback,
       address,
       mutatedOmlPath: 'working.oml',
       merged: true,
@@ -118,6 +133,13 @@ export function evidence(c: Config) {
   };
 }
 export const plan: Plan = {
+  styleRoot: 'body',
+  model: {
+    '1:2': { path: 'ScreenRoot', classes: ['stack'], facts: {},
+      bindings: { layoutMode: { source: 'VERTICAL', field: 'class:stack' } },
+      visualExemption: 'The frame is covered by the whole-viewport pixel comparison.' },
+    '1:3': { path: 'Primary', classes: ['primary'], facts: {}, bindings: {} },
+  },
   stableData: true,
   fontsAvailable: true,
   assetsAvailable: true,
@@ -142,4 +164,4 @@ export const plan: Plan = {
   ],
 };
 export const fixtureHtml =
-  '<!doctype html><html data-build="new"><meta charset="utf-8"><style>*{box-sizing:border-box} body{background:white;margin:0} button{position:absolute;left:10px;top:10px;width:40px;height:20px;background:rgb(10,20,30);border:0;font:16px Arial}</style><button id="button" aria-label="Open"></button><p id="opened" hidden>Opened</p><script>document.querySelector("button").onclick=()=>document.querySelector("p").hidden=false</script></html>';
+  `<!doctype html><html data-build="new"><meta charset="utf-8"><style>*{box-sizing:border-box} body{background:white;margin:0} button{position:absolute;left:10px;top:10px;width:40px;height:20px;border:0;font:16px Arial}${themeCss}</style><body class="stack"><button class="primary" id="button" aria-label="Open"></button><p id="opened" hidden>Opened</p><script>document.querySelector("button").onclick=()=>document.querySelector("p").hidden=false</script></body></html>`;

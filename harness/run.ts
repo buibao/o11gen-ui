@@ -11,6 +11,7 @@ import type { Browser } from '@playwright/test';
 import { z } from 'zod';
 import {
   activeViews,
+  configSchema,
   designFrame,
   frameAddress,
   readJson,
@@ -27,9 +28,11 @@ import {
 } from './gates.ts';
 import { mappings } from './mapping.ts';
 import { capture } from './browser.ts';
-import { check, classify, planSchema } from './visual.ts';
+import { check, classify, planSchema, type Plan } from './visual.ts';
+import { inspectTheme } from './theme.ts';
+import { checkDesignPlan, modelReadback } from './conformance.ts';
 
-const configHash = (c: Config) => hash(JSON.stringify(c));
+const configHash = (c: Config) => hash(JSON.stringify(configSchema.parse(c)));
 export function begin(c: Config, evidenceMode: 'fixture' | 'live' = 'live') {
   const run = randomUUID(),
     dir = runPath(run);
@@ -100,6 +103,13 @@ function designArtifacts(
     throw Error('Design integrity mismatch');
   return { manifest, ref };
 }
+function comparisonBaseline(name: string, plan: Plan, design: ReturnType<typeof designArtifacts>) {
+  const { model, ...visual } = plan;
+  const requirements = Object.entries(model).map(([id, w]) => [id, w.visualExemption,
+    Object.entries(w.bindings).map(([k, b]) => [k, b.source, b.mode, b.cssValue])]);
+  return [name, hash(JSON.stringify([visual, requirements])),
+    design ? hash(JSON.stringify(design.manifest)) : null, design ? hash(design.ref) : null];
+}
 export function checkedGate(c: Config, run: string, phase: Phase) {
   const { dir, attempt, history } = paths(c, run);
   if (existsSync(join(dir, 'terminal.json')))
@@ -145,26 +155,33 @@ export function checkedGate(c: Config, run: string, phase: Phase) {
   }
   try {
     const inventory = readJson(join(dir, 'inventory.json'));
+    const evidence = z.object({ theme: z.unknown(),
+      mutation: z.object({ styleReadback: z.unknown().optional() }).optional(),
+      merge: z.object({ styleReadback: z.unknown().optional() }).optional(),
+    }).parse(readJson(join(attempt, 'evidence.json')));
+    const theme = inspectTheme(evidence.theme, c.outsystems.moduleKey);
+    const pending = phase === 'generate' ? undefined : modelReadback(evidence.mutation?.styleReadback, theme);
+    const accepted = phase === 'browser' || phase === 'publish'
+      ? modelReadback(evidence.merge?.styleReadback, theme) : undefined;
     const baseline = [];
+    let primaryMap: unknown;
     for (const v of activeViews(c)) {
       const a = designArtifacts(c, dir, v);
+      const plan = planSchema.parse(readJson(join(dir, 'plans', v.name + '.json')));
       if (history.length) {
-        const plan = planSchema.parse(
-          readJson(join(dir, 'plans', v.name + '.json')),
-        );
-        baseline.push([
-          v.name,
-          hash(JSON.stringify(plan)),
-          a ? hash(a.ref) : null,
-        ]);
+        baseline.push(comparisonBaseline(v.name, plan, a));
       }
-      if (!a) continue;
-      const map = mappings(a.manifest, inventory, c.outsystems.moduleKey) as {
+      const map = (a ? mappings(a.manifest, inventory, c.outsystems.moduleKey) : primaryMap) as {
         status: string;
       };
-      json(join(dir, 'design', v.name, 'mapping.json'), map);
-      if (map.status !== 'PASS')
+      primaryMap ??= map;
+      if (map.status !== 'PASS') {
+        if (a) json(join(dir, 'design', v.name, 'mapping.json'), map);
         return result('BLOCKED', 'Resolve unsupported mappings for ' + v.name);
+      }
+      const verified = checkDesignPlan(plan, map, theme, pending);
+      if (accepted) checkDesignPlan(plan, map, theme, accepted);
+      if (a) json(join(dir, 'design', v.name, 'mapping.json'), verified);
     }
     if (
       history.length &&
@@ -174,11 +191,11 @@ export function checkedGate(c: Config, run: string, phase: Phase) {
         'REVIEW_REQUIRED',
         'Design reference or requirements changed since initial validation',
       );
-  } catch {
-    return result(
-      'BLOCKED',
-      'Supply validated frame PNG, manifest and scoped inventory',
-    );
+  } catch (err) {
+    const reason = err instanceof z.ZodError ? 'Invalid or missing evidence: ' +
+      err.issues.map(i => i.path.join('.')).join(', ') :
+      err instanceof Error ? err.message : 'Missing design evidence';
+    return result('BLOCKED', reason);
   }
   if (!existsSync(join(attempt, 'evidence.json')))
     return result('BLOCKED', 'Missing evidence for this attempt');
@@ -349,12 +366,9 @@ async function validateAttempt(c: Config, run: string, browser: Browser) {
   for (const v of activeViews(c)) {
     const path = join(dir, 'plans', v.name + '.json');
     const plan = planSchema.parse(readJson(path));
-    const reference = designArtifacts(c, dir, v)?.ref;
-    comparable.push([
-      v.name,
-      hash(JSON.stringify(plan)),
-      reference ? hash(reference) : null,
-    ]);
+    const design = designArtifacts(c, dir, v);
+    const reference = design?.ref;
+    comparable.push(comparisonBaseline(v.name, plan, design));
     const priorPath = join(dir, 'attempt-' + (n - 1), v.name, 'metrics.json');
     const prior = n
       ? z

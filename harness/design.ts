@@ -57,6 +57,8 @@ const fields = [
   'effects',
   'styles',
   'boundVariables',
+  'explicitVariableModes',
+  'resolvedVariableModes',
   'opacity',
   'style',
 ] as const;
@@ -81,8 +83,10 @@ export function normalize(
           str,
           z.object({
             name: str,
-            value: z.union([str, z.number(), z.boolean()]).nullable(),
-          }),
+            value: z.json().optional(),
+            valuesByMode: z.record(str, z.json()).optional(),
+            variableCollectionId: str.optional(),
+          }).refine(v => v.value !== undefined || v.valuesByMode !== undefined),
         )
         .optional(),
       assets: z
@@ -136,7 +140,7 @@ export function normalize(
   if (!nodes.length) throw Error('Hidden frame');
   const metadata = source.success ? source.data : undefined;
   return {
-    schema: 2,
+    schema: 3,
     fileKey: key,
     frameId: node,
     revision,
@@ -158,7 +162,7 @@ function cacheDir(url: string, revision: string, scale: number) {
   return join(
     '.harness-cache',
     'design',
-    hash(JSON.stringify([2, frameAddress(url), revision, scale])),
+    hash(JSON.stringify([3, frameAddress(url), revision, scale])),
   );
 }
 function persist(dir: string, manifest: Manifest, image: Buffer) {

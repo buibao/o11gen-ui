@@ -24,6 +24,7 @@
       "input"
     ],
     "target": "Input + Label",
+    "members": ["Input", "Label"],
     "dependencies": [],
     "properties": {
       "label": "Label",
@@ -36,11 +37,22 @@
     "fallback": "Project form block"
   },
   {
+    "component": "Field label",
+    "aliases": ["label", "field label"],
+    "target": "Label",
+    "dependencies": [],
+    "properties": { "text": "caption", "for": "TargetWidget" },
+    "tokens": { "style": "theme label class" },
+    "limitations": "Check TargetWidget against the paired input.",
+    "fallback": "Existing project field block"
+  },
+  {
     "component": "Card",
     "aliases": [
       "card"
     ],
-    "target": "Container",
+    "target": "Content/Card",
+    "alternatives": ["Content/CardSectioned", "Container"],
     "dependencies": [],
     "properties": {
       "children": "content"
@@ -49,7 +61,7 @@
       "padding": "spacing class"
     },
     "limitations": "Complex or repeated cards may require a block.",
-    "fallback": "Referenced Content/Card or project card block"
+    "fallback": "Use a Container only when neither referenced card block is available."
   },
   {
     "component": "Modal",
@@ -92,7 +104,8 @@
       "text",
       "heading"
     ],
-    "target": "Text / Expression",
+    "target": "Text",
+    "alternatives": ["Expression"],
     "dependencies": [],
     "properties": {
       "characters": "text or expression"
